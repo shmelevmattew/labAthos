@@ -4,5 +4,6 @@ bastion_lab_iface: ens19
 bastion_home_address: 192.168.1.210/24
 bastion_home_gateway: 192.168.1.1
 bastion_home_dns:
+  - 10.10.0.10
   - 192.168.1.1
 bastion_lab_address: 10.10.0.10/24
