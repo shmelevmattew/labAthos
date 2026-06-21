@@ -1,0 +1,6 @@
+---
+- name: Configure bastion netplan only
+  hosts: bastion
+  become: true
+  roles:
+    - netplan

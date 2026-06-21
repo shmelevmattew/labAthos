@@ -1,0 +1,6 @@
+---
+- name: Configure bastion DNS only
+  hosts: bastion
+  become: true
+  roles:
+    - dns

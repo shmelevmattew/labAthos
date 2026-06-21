@@ -1,0 +1,81 @@
+---
+- name: Install PostgreSQL dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-psycopg2
+      - gnupg
+      - curl
+      - ca-certificates
+    state: present
+    update_cache: true
+  tags: [postgres, packages]
+
+- name: Add PostgreSQL PGDG repository key
+  ansible.builtin.apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+  tags: [postgres, packages]
+
+- name: Add PostgreSQL PGDG repository
+  ansible.builtin.apt_repository:
+    repo: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+    state: present
+    filename: pgdg
+  tags: [postgres, packages]
+
+- name: Install PostgreSQL packages
+  ansible.builtin.apt:
+    name:
+      - "postgresql-{{ postgresql_version }}"
+      - "postgresql-contrib-{{ postgresql_version }}"
+    state: present
+    update_cache: true
+  notify: Restart postgresql
+  tags: [postgres, packages]
+
+- name: Enable and start PostgreSQL service
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service }}"
+    enabled: true
+    state: started
+  tags: [postgres]
+
+- name: Configure listen_addresses
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_conf_path }}"
+    regexp: "^#?listen_addresses\\s*="
+    line: "listen_addresses = '{{ postgresql_listen_addresses }}'"
+    backrefs: false
+  notify: Restart postgresql
+  tags: [postgres, config]
+
+- name: Deploy pg_hba.conf
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: "{{ postgresql_hba_path }}"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: Restart postgresql
+  tags: [postgres, config]
+
+- name: Create application users
+  community.postgresql.postgresql_user:
+    name: "{{ item.owner }}"
+    password: "{{ lookup('vars', item.password_var) }}"
+    role_attr_flags: LOGIN
+    state: present
+  loop: "{{ postgresql_databases }}"
+  become: true
+  become_user: postgres
+  tags: [postgres, databases]
+
+- name: Create application databases
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.owner }}"
+    state: present
+  loop: "{{ postgresql_databases }}"
+  become: true
+  become_user: postgres
+  tags: [postgres, databases]

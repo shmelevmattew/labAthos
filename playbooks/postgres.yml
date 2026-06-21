@@ -1,0 +1,6 @@
+---
+- name: Install and configure PostgreSQL for Bank of Anthos
+  hosts: postgres
+  become: true
+  roles:
+    - postgres

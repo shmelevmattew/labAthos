@@ -1,0 +1,12 @@
+network:
+  version: 2
+  ethernets:
+    {{ bastion_home_iface }}:
+      addresses: [{{ bastion_home_address }}]
+      routes:
+        - to: default
+          via: {{ bastion_home_gateway }}
+      nameservers:
+        addresses: {{ bastion_home_dns }}
+    {{ bastion_lab_iface }}:
+      addresses: [{{ bastion_lab_address }}]

@@ -1,0 +1,41 @@
+---
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: Install iptables-persistent
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Configure NAT for lab subnet
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    jump: MASQUERADE
+    source: "{{ nat_lab_subnet }}"
+    out_interface: "{{ nat_out_iface }}"
+  notify: Save iptables rules
+
+- name: Allow forward from lab to internet
+  ansible.builtin.iptables:
+    chain: FORWARD
+    in_interface: "{{ nat_in_iface }}"
+    out_interface: "{{ nat_out_iface }}"
+    jump: ACCEPT
+  notify: Save iptables rules
+
+- name: Allow return traffic to lab
+  ansible.builtin.iptables:
+    chain: FORWARD
+    in_interface: "{{ nat_out_iface }}"
+    out_interface: "{{ nat_in_iface }}"
+    ctstate: RELATED,ESTABLISHED
+    jump: ACCEPT
+  notify: Save iptables rules

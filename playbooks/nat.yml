@@ -1,0 +1,6 @@
+---
+- name: Configure bastion NAT only
+  hosts: bastion
+  become: true
+  roles:
+    - nat

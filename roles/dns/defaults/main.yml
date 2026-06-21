@@ -1,0 +1,33 @@
+coredns_version: "1.11.3"
+coredns_listen_address: 10.10.0.10
+coredns_port: 53
+coredns_config_dir: /etc/coredns
+coredns_binary_path: /usr/local/bin/coredns
+coredns_user: coredns
+coredns_group: coredns
+
+lab_domain: lab.local
+
+dns_forwarders:
+  - 192.168.1.1
+  - 8.8.8.8
+
+dns_hosts:
+  - ip: 10.10.0.10
+    names: [bastion.lab.local, bastion]
+  - ip: 10.10.0.11
+    names: [jenkins.lab.local, jenkins]
+  - ip: 10.10.0.20
+    names: [k8s-cp.lab.local, k8s-cp]
+  - ip: 10.10.0.21
+    names: [k8s-w1.lab.local, k8s-w1]
+  - ip: 10.10.0.22
+    names: [k8s-w2.lab.local, k8s-w2]
+  - ip: 10.10.0.30
+    names: [postgres.lab.local, postgres]
+  - ip: 10.10.0.31
+    names: [kafka.lab.local, kafka]
+  - ip: 10.10.0.32
+    names: [vault.lab.local, registry.lab.local, vault, registry]
+  - ip: 10.10.0.40
+    names: [monitor.lab.local, monitor]

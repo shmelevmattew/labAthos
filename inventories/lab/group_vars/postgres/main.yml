@@ -1,0 +1,22 @@
+postgresql_version: 16
+postgresql_listen_addresses: "*"
+
+postgresql_databases:
+  - name: contacts_db
+    owner: contacts_app
+    password_var: contacts_db_password
+  - name: accounts_db
+    owner: accounts_app
+    password_var: accounts_db_password
+  - name: ledger_db
+    owner: ledger_app
+    password_var: ledger_db_password
+
+pg_hba_allowed_hosts:
+  - { db: contacts_db, user: contacts_app, address: 10.10.0.21/32 }
+  - { db: contacts_db, user: contacts_app, address: 10.10.0.22/32 }
+  - { db: accounts_db, user: accounts_app, address: 10.10.0.21/32 }
+  - { db: accounts_db, user: accounts_app, address: 10.10.0.22/32 }
+  - { db: ledger_db, user: ledger_app, address: 10.10.0.21/32 }
+  - { db: ledger_db, user: ledger_app, address: 10.10.0.22/32 }
+  - { db: all, user: all, address: 10.10.0.10/32 }

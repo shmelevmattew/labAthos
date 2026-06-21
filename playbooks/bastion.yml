@@ -1,0 +1,11 @@
+---
+- name: Configure bastion network
+  hosts: bastion
+  become: true
+  roles:
+    - role: netplan
+      tags: [network, netplan]
+    - role: nat
+      tags: [network, nat]
+    - role: dns
+      tags: [dns]

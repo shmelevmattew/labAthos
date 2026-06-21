@@ -1,0 +1,17 @@
+[Unit]
+Description=CoreDNS internal lab DNS
+Documentation=https://coredns.io
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ coredns_user }}
+Group={{ coredns_group }}
+ExecStart={{ coredns_binary_path }} -conf {{ coredns_config_dir }}/Corefile
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=8192
+
+[Install]
+WantedBy=multi-user.target

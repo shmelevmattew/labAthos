@@ -1,0 +1,9 @@
+---
+- name: Transport template to /etc/netplan/50-lab.yaml
+  ansible.builtin.template:
+    src: 50-lab.yaml.j2
+    dest: /etc/netplan/50-lab.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Apply netplan

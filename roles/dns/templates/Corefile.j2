@@ -1,0 +1,13 @@
+{{ lab_domain }} {
+    bind {{ coredns_listen_address }}
+    hosts {{ coredns_config_dir }}/{{ lab_domain }}.hosts {
+        fallthrough
+    }
+    log
+}
+
+. {
+    bind {{ coredns_listen_address }}
+    forward . {{ dns_forwarders | join(' ') }}
+    log
+}
