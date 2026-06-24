@@ -1,0 +1,6 @@
+---
+- name: Install and configure Kafka for Bank of Anthos lab
+  hosts: kafka
+  become: true
+  roles:
+    - kafka

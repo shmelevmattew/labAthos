@@ -5,5 +5,5 @@
     dest: /etc/netplan/50-lab.yaml
     owner: root
     group: root
-    mode: '0644'
+    mode: '0640'
   notify: Apply netplan

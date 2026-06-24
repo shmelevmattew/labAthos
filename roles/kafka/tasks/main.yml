@@ -1,0 +1,137 @@
+---
+- name: Install Java and dependencies
+  ansible.builtin.apt:
+    name:
+      - openjdk-17-jre-headless
+      - curl
+      - ca-certificates
+    state: present
+    update_cache: true
+  tags: [kafka, packages]
+
+- name: Detect Java home
+  ansible.builtin.shell: dirname "$(dirname "$(readlink -f "$(command -v java)")")"
+  register: detected_java_home
+  changed_when: false
+  tags: [kafka, packages]
+
+- name: Set Java home fact
+  ansible.builtin.set_fact:
+    kafka_java_home: "{{ detected_java_home.stdout }}"
+  tags: [kafka, packages]
+
+- name: Create Kafka group
+  ansible.builtin.group:
+    name: "{{ kafka_group }}"
+    system: true
+  tags: [kafka, users]
+
+- name: Create Kafka user
+  ansible.builtin.user:
+    name: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ kafka_log_dir }}"
+    create_home: false
+  tags: [kafka, users]
+
+- name: Create Kafka directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ kafka_install_dir }}", mode: "0755" }
+    - { path: "{{ kafka_config_dir }}", mode: "0755" }
+    - { path: "{{ kafka_log_dir }}", mode: "0750" }
+    - { path: "/var/log/kafka", mode: "0750" }
+  tags: [kafka, dirs]
+
+- name: Download Kafka archive
+  ansible.builtin.get_url:
+    url: "{{ kafka_download_url }}"
+    dest: "/tmp/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz"
+    mode: "0644"
+  tags: [kafka, packages]
+
+- name: Install Kafka binaries
+  ansible.builtin.unarchive:
+    src: "/tmp/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz"
+    dest: "{{ kafka_install_dir }}"
+    remote_src: true
+    creates: "{{ kafka_install_dir }}/bin/kafka-server-start.sh"
+    extra_opts:
+      - "--strip-components=1"
+  tags: [kafka, packages]
+
+- name: Fix ownership of Kafka install dir
+  ansible.builtin.file:
+    path: "{{ kafka_install_dir }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    recurse: true
+  tags: [kafka, dirs]
+
+- name: Deploy server.properties
+  ansible.builtin.template:
+    src: server.properties.j2
+    dest: "{{ kafka_config_dir }}/server.properties"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0640"
+  notify: Restart kafka
+  tags: [kafka, config]
+
+- name: Check if Kafka storage is formatted
+  ansible.builtin.stat:
+    path: "{{ kafka_log_dir }}/meta.properties"
+  register: kafka_meta
+  tags: [kafka, config]
+
+- name: Format Kafka storage (KRaft, first run only)
+  ansible.builtin.command:
+    cmd: >-
+      {{ kafka_install_dir }}/bin/kafka-storage.sh format
+      -t {{ kafka_cluster_id }}
+      -c {{ kafka_config_dir }}/server.properties
+  when: not kafka_meta.stat.exists
+  tags: [kafka, config]
+
+- name: Deploy Kafka systemd unit
+  ansible.builtin.template:
+    src: kafka.service.j2
+    dest: /etc/systemd/system/kafka.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kafka
+  tags: [kafka, config]
+
+- name: Enable and start Kafka
+  ansible.builtin.systemd:
+    name: kafka
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: [kafka]
+
+- name: Apply Kafka configuration before topic setup
+  ansible.builtin.meta: flush_handlers
+
+- name: Create Kafka topics
+  ansible.builtin.command:
+    cmd: >-
+      {{ kafka_install_dir }}/bin/kafka-topics.sh
+      --bootstrap-server {{ kafka_broker_host }}:{{ kafka_broker_port }}
+      --create
+      --if-not-exists
+      --topic {{ item.name }}
+      --partitions {{ item.partitions }}
+      --replication-factor {{ item.replication_factor }}
+  loop: "{{ kafka_topics }}"
+  register: kafka_topic_create
+  changed_when: "'Created topic' in kafka_topic_create.stdout"
+  tags: [kafka, topics]

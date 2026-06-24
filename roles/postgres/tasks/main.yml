@@ -59,6 +59,9 @@
   notify: Restart postgresql
   tags: [postgres, config]
 
+- name: Apply PostgreSQL configuration before database setup
+  ansible.builtin.meta: flush_handlers
+
 - name: Create application users
   community.postgresql.postgresql_user:
     name: "{{ item.owner }}"
