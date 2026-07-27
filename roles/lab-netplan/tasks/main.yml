@@ -1,0 +1,12 @@
+---
+- name: Deploy netplan config for lab VM
+  ansible.builtin.template:
+    src: 50-lab.yaml.j2
+    dest: /etc/netplan/50-lab.yaml
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Apply lab netplan
+
+- name: Apply netplan
+  ansible.builtin.meta: flush_handlers

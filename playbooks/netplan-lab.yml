@@ -1,0 +1,6 @@
+---
+- name: Configure netplan for lab VMs
+  hosts: all:!bastion
+  become: true
+  roles:
+    - lab-netplan

@@ -1,0 +1,15 @@
+# Managed by Ansible — lab-netplan
+network:
+  version: 2
+  ethernets:
+    {{ lab_netplan_iface }}:
+      addresses:
+        - {{ lab_ip }}
+      routes:
+        - to: default
+          via: {{ lab_gateway }}
+      nameservers:
+        addresses:
+{% for dns in lab_dns %}
+          - {{ dns }}
+{% endfor %}
