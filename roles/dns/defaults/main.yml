@@ -17,6 +17,8 @@ dns_hosts:
     names: [bastion.lab.local, bastion]
   - ip: 10.10.0.11
     names: [jenkins.lab.local, jenkins]
+  - ip: 10.10.0.12
+    names: [gitlab.lab.local, gitlab]
   - ip: 10.10.0.20
     names: [k8s-cp.lab.local, k8s-cp]
   - ip: 10.10.0.21

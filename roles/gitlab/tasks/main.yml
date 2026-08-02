@@ -1,0 +1,61 @@
+---
+- name: Install GitLab dependencies
+  ansible.builtin.apt:
+    name:
+      - curl
+      - openssh-server
+      - ca-certificates
+      - perl
+    state: present
+    update_cache: true
+  tags: [gitlab, packages]
+
+- name: Download GitLab repository install script
+  ansible.builtin.get_url:
+    url: "https://packages.gitlab.com/install/repositories/gitlab/{{ gitlab_edition }}/script.deb.sh"
+    dest: "/tmp/gitlab_install_script.deb.sh"
+    mode: "0755"
+  tags: [gitlab, packages]
+
+- name: Add GitLab APT repository
+  ansible.builtin.command: /tmp/gitlab_install_script.deb.sh
+  args:
+    creates: /etc/apt/sources.list.d/gitlab_gitlab-ce.list
+  tags: [gitlab, packages]
+
+- name: Install GitLab CE package
+  ansible.builtin.apt:
+    name: "{{ gitlab_edition }}"
+    state: present
+    update_cache: true
+  tags: [gitlab, packages]
+
+- name: Configure GitLab external URL
+  ansible.builtin.lineinfile:
+    path: /etc/gitlab/gitlab.rb
+    regexp: "^external_url\\s+['\"]"
+    line: "external_url '{{ gitlab_external_url }}'"
+  notify: Reconfigure gitlab
+  tags: [gitlab, config]
+
+- name: Configure GitLab initial root password
+  ansible.builtin.lineinfile:
+    path: /etc/gitlab/gitlab.rb
+    regexp: "^gitlab_rails\\['initial_root_password'\\]"
+    line: "gitlab_rails['initial_root_password'] = '{{ gitlab_root_password }}'"
+  notify: Reconfigure gitlab
+  tags: [gitlab, config]
+
+- name: Reconfigure GitLab
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for GitLab to become healthy
+  ansible.builtin.uri:
+    url: "{{ gitlab_external_url }}/-/health"
+    status_code: 200
+    timeout: 5
+  register: gitlab_health
+  retries: 30
+  delay: 10
+  until: gitlab_health.status == 200
+  tags: [gitlab]
