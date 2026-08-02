@@ -3,4 +3,5 @@ gitlab_edition: "gitlab-ce"
 gitlab_external_url: "http://gitlab.lab.local"
 gitlab_domain: "gitlab.lab.local"
 # Настоящий пароль задаётся через ansible-vault: group_vars/gitlab/vault.yml
-gitlab_root_password: "{{ lookup('env', 'GITLAB_ROOT_PASSWORD') | default('Gitlab123!', true) }}"
+# Внимание: GitLab отклоняет пароли типа «Gitlab123!» (частая комбинация)
+gitlab_root_password: "{{ lookup('env', 'GITLAB_ROOT_PASSWORD') | default('F1nTech!Lab2026', true) }}"
