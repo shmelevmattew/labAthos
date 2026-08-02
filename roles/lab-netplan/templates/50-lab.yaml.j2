@@ -3,6 +3,8 @@ network:
   version: 2
   ethernets:
     {{ lab_netplan_iface }}:
+      dhcp4: false
+      dhcp6: false
       addresses:
         - {{ lab_ip }}
       routes:
@@ -13,3 +15,5 @@ network:
 {% for dns in lab_dns %}
           - {{ dns }}
 {% endfor %}
+        search:
+          - lab.local
