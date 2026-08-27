@@ -80,13 +80,13 @@
         puts "RESET_OK"
       end
     else
+      org = Organizations::Organization.default_organization
       u = User.new(username: "root", email: "root@lab.local", name: "Administrator", admin: true,
                    password: "{{ gitlab_root_password }}",
                    password_confirmation: "{{ gitlab_root_password }}")
       u.skip_confirmation!
-      u.build_namespace(name: "root", path: "root")
-      u.save!
-      if u.persisted?
+      u.namespace = Namespaces::UserNamespace.new(name: "root", path: "root", organization: org)
+      if u.save
         puts "CREATED_OK"
       else
         puts "ERROR: " + u.errors.full_messages.join("; ")
