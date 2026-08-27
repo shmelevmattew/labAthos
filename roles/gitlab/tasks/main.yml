@@ -80,14 +80,16 @@
         puts "RESET_OK"
       end
     else
-      params = { username: "root", email: "root@lab.local", name: "Administrator", admin: true,
-                 password: "{{ gitlab_root_password }}",
-                 password_confirmation: "{{ gitlab_root_password }}" }
-      user = Users::CreateService.new(User.new(admin: true), params).execute
-      if user.persisted?
+      u = User.new(username: "root", email: "root@lab.local", name: "Administrator", admin: true,
+                   password: "{{ gitlab_root_password }}",
+                   password_confirmation: "{{ gitlab_root_password }}")
+      u.skip_confirmation!
+      u.build_namespace(name: "root", path: "root")
+      u.save!
+      if u.persisted?
         puts "CREATED_OK"
       else
-        puts "ERROR: " + user.errors.full_messages.join("; ")
+        puts "ERROR: " + u.errors.full_messages.join("; ")
       end
     end
     RUBY
