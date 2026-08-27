@@ -55,7 +55,46 @@
     status_code: 200
     timeout: 5
   register: gitlab_health
-  retries: 30
+  # Холодный старт GitLab на слабом железе занимает до 5-10 минут
+  retries: 60
   delay: 10
   until: gitlab_health.status == 200
   tags: [gitlab]
+
+# initial_root_password из gitlab.rb действует только при первом seed.
+# Если первый reconfigure упал на создании админа — root не существует,
+# поэтому гарантируем его здесь (создаём или сбрасываем пароль).
+- name: Ensure GitLab root user exists with known password
+  ansible.builtin.shell: |
+    gitlab-rails runner <<'RUBY'
+    u = User.find_by(username: "root")
+    if u
+      if u.valid_password?("{{ gitlab_root_password }}")
+        puts "ROOT_OK"
+      else
+        u.password = "{{ gitlab_root_password }}"
+        u.password_confirmation = "{{ gitlab_root_password }}"
+        u.save!
+        puts "RESET_OK"
+      end
+    else
+      params = { username: "root", email: "root@lab.local", name: "Administrator", admin: true,
+                 password: "{{ gitlab_root_password }}",
+                 password_confirmation: "{{ gitlab_root_password }}" }
+      user = Users::CreateService.new(User.new(admin: true), params).execute
+      if user.persisted?
+        puts "CREATED_OK"
+      else
+        puts "ERROR: " + user.errors.full_messages.join("; ")
+      end
+    end
+    RUBY
+  args:
+    executable: /bin/bash
+  register: gitlab_root_setup
+  changed_when: "'ROOT_OK' not in gitlab_root_setup.stdout"
+  failed_when: "'ERROR:' in gitlab_root_setup.stdout"
+  # gitlab-rails runner поднимает Rails — на слабом железе до 5 минут
+  async: 600
+  poll: 15
+  tags: [gitlab, users]
