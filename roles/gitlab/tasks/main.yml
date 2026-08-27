@@ -51,7 +51,9 @@
 
 - name: Wait for GitLab to become healthy
   ansible.builtin.uri:
-    url: "{{ gitlab_external_url }}/-/health"
+    url: "http://127.0.0.1/-/health"
+    headers:
+      Host: "{{ gitlab_domain }}"
     status_code: 200
     timeout: 5
   register: gitlab_health
