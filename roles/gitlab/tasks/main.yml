@@ -98,7 +98,4 @@
   register: gitlab_root_setup
   changed_when: "'ROOT_OK' not in gitlab_root_setup.stdout"
   failed_when: "'ERROR:' in gitlab_root_setup.stdout"
-  # gitlab-rails runner поднимает Rails — на слабом железе до 5 минут
-  async: 600
-  poll: 15
   tags: [gitlab, users]
