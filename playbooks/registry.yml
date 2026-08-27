@@ -1,0 +1,6 @@
+---
+- name: Install and configure Docker registry
+  hosts: infra-core
+  become: true
+  roles:
+    - registry

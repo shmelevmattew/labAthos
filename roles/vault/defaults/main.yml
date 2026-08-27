@@ -1,0 +1,33 @@
+---
+vault_version: "1.18.4"
+vault_domain: "vault.lab.local"
+vault_port: 8200
+vault_bin: /usr/local/bin/vault
+vault_data_dir: /var/lib/vault
+vault_config_dir: /etc/vault
+vault_user: vault
+vault_group: vault
+
+# KV v2 пути (как в легенде)
+vault_secret_paths:
+  - secret/fintech/dev/postgres/contacts
+  - secret/fintech/dev/postgres/accounts
+  - secret/fintech/dev/postgres/ledger
+  - secret/fintech/dev/kafka/ledgerwriter
+  - secret/fintech/dev/registry/ci
+
+# Policies
+vault_policies:
+  - name: jenkins-dev
+    content: |
+      path "secret/data/fintech/dev/*" {
+        capabilities = ["read", "list"]
+      }
+  - name: apps-dev
+    content: |
+      path "secret/data/fintech/dev/*" {
+        capabilities = ["read", "list"]
+      }
+
+# Initial root token (для первого входа; в проде — unseal keys)
+vault_dev_token: "{{ lookup('env', 'VAULT_TOKEN') | default('vault-root-dev-token', true) }}"

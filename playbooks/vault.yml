@@ -1,0 +1,6 @@
+---
+- name: Install and configure Vault
+  hosts: infra-core
+  become: true
+  roles:
+    - vault

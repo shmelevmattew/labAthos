@@ -1,0 +1,7 @@
+---
+# lab-infra-core network config (registry + vault)
+lab_netplan_iface: eth0
+lab_ip: 10.10.0.32/24
+lab_gateway: 10.10.0.10
+lab_dns:
+  - 10.10.0.10

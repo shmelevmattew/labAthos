@@ -1,0 +1,114 @@
+---
+- name: Install Vault dependencies
+  ansible.builtin.apt:
+    name:
+      - unzip
+      - curl
+      - jq
+    state: present
+    update_cache: true
+  tags: [vault, packages]
+
+- name: Download Vault binary
+  ansible.builtin.get_url:
+    url: "https://releases.hashicorp.com/vault/{{ vault_version }}/vault_{{ vault_version }}_linux_amd64.zip"
+    dest: "/tmp/vault_{{ vault_version }}.zip"
+    mode: "0644"
+  tags: [vault, packages]
+
+- name: Install Vault binary
+  ansible.builtin.unarchive:
+    src: "/tmp/vault_{{ vault_version }}.zip"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+    owner: root
+    group: root
+  tags: [vault, packages]
+
+- name: Create Vault system user
+  ansible.builtin.user:
+    name: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+  tags: [vault, users]
+
+- name: Create Vault group
+  ansible.builtin.group:
+    name: "{{ vault_group }}"
+    system: true
+  tags: [vault, users]
+
+- name: Create Vault directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ vault_config_dir }}", mode: "0750" }
+    - { path: "{{ vault_data_dir }}", mode: "0750" }
+    - { path: "/var/log/vault", mode: "0750" }
+  tags: [vault, dirs]
+
+- name: Deploy Vault config (prod-like, file storage)
+  ansible.builtin.template:
+    src: vault.hcl.j2
+    dest: "{{ vault_config_dir }}/vault.hcl"
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    mode: "0640"
+  notify: Restart vault
+  tags: [vault, config]
+
+- name: Deploy Vault systemd unit
+  ansible.builtin.template:
+    src: vault.service.j2
+    dest: /etc/systemd/system/vault.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart vault
+  tags: [vault, config]
+
+- name: Enable and start Vault
+  ansible.builtin.systemd:
+    name: vault
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: [vault]
+
+- name: Apply Vault config
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for Vault API
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ vault_port }}/v1/sys/health"
+    status_code: [200, 429, 501, 503]
+    timeout: 5
+  register: vault_health
+  retries: 30
+  delay: 3
+  until: vault_health.status in [200, 429, 501, 503]
+  tags: [vault]
+
+- name: Initialize Vault (first run only)
+  ansible.builtin.shell: |
+    set -e
+    if ! {{ vault_bin }} status -address=http://127.0.0.1:{{ vault_port }} > /dev/null 2>&1; then
+      exit 0
+    fi
+    INIT_FILE={{ vault_config_dir }}/init-keys.json
+    if [ ! -f "$INIT_FILE" ]; then
+      {{ vault_bin }} operator init -address=http://127.0.0.1:{{ vault_port }} \
+        -key-shares=1 -key-threshold=1 -format=json > "$INIT_FILE"
+    fi
+  args:
+    executable: /bin/bash
+  register: vault_init
+  changed_when: false
+  tags: [vault, init]

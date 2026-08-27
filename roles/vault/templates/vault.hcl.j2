@@ -1,0 +1,17 @@
+# Managed by Ansible — Vault (prod-like, file storage, dev lab)
+storage "file" {
+  path = "{{ vault_data_dir }}"
+}
+
+listener "tcp" {
+  address     = "0.0.0.0:{{ vault_port }}"
+  tls_disable = 1
+}
+
+api_addr = "http://{{ vault_domain }}:{{ vault_port }}"
+
+# Для lab: 1 unseal key (в проде — 5 и порог 3)
+seal "shamir" {}
+
+# Логирование
+log_level = "Info"

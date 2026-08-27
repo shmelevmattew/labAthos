@@ -1,0 +1,102 @@
+---
+- name: Install registry dependencies
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-compose-plugin
+      - openssl
+      - apache2-utils
+    state: present
+    update_cache: true
+  tags: [registry, packages]
+
+- name: Create registry directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+  loop:
+    - "{{ registry_data_dir }}"
+    - "{{ registry_auth_dir }}"
+  tags: [registry, dirs]
+
+# --- Внутренний CA и сертификат (как в банке: свой CA) ---
+- name: Generate internal CA private key
+  ansible.builtin.command: >
+    openssl genrsa -out {{ registry_ca_key }} 2048
+  args:
+    creates: "{{ registry_ca_key }}"
+  tags: [registry, tls]
+
+- name: Generate internal CA certificate
+  ansible.builtin.command: >
+    openssl req -x509 -new -nodes -key {{ registry_ca_key }}
+    -sha256 -days 3650
+    -subj "/CN=lab.local Internal CA"
+    -out {{ registry_ca_cert }}
+  args:
+    creates: "{{ registry_ca_cert }}"
+  tags: [registry, tls]
+
+- name: Generate server private key
+  ansible.builtin.command: >
+    openssl genrsa -out {{ registry_server_key }} 2048
+  args:
+    creates: "{{ registry_server_key }}"
+  tags: [registry, tls]
+
+- name: Generate server certificate for registry.lab.local
+  ansible.builtin.shell: >
+    openssl req -new -key {{ registry_server_key }}
+    -subj "/CN={{ registry_domain }}"
+    -out /tmp/registry.csr &&
+    openssl x509 -req -in /tmp/registry.csr
+    -CA {{ registry_ca_cert }} -CAkey {{ registry_ca_key }}
+    -CAcreateserial -out {{ registry_server_cert }}
+    -days 825 -sha256 -extfile <(printf "subjectAltName=DNS:{{ registry_domain }}")
+  args:
+    creates: "{{ registry_server_cert }}"
+  tags: [registry, tls]
+
+- name: Trust internal CA system-wide
+  ansible.builtin.copy:
+    src: "{{ registry_ca_cert }}"
+    dest: /usr/local/share/ca-certificates/lab-local-ca.crt
+    remote_src: true
+    mode: "0644"
+  notify: Update CA certificates
+  tags: [registry, tls]
+
+- name: Create registry auth credentials (htpasswd)
+  ansible.builtin.shell: >
+    htpasswd -Bbn {{ registry_username }} "{{ registry_password }}"
+    > {{ registry_auth_dir }}/htpasswd
+  args:
+    creates: "{{ registry_auth_dir }}/htpasswd"
+  tags: [registry, config]
+
+# --- docker-compose (registry:2 с TLS и basic auth) ---
+- name: Deploy docker-compose.yml for registry
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/registry/docker-compose.yml
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Restart registry
+  tags: [registry, config]
+
+- name: Start registry
+  ansible.builtin.command: docker compose -f /opt/registry/docker-compose.yml up -d
+  args:
+    creates: /opt/registry/.started
+  register: registry_start
+  changed_when: registry_start.rc == 0
+  tags: [registry]
+
+- name: Mark registry as started
+  ansible.builtin.file:
+    path: /opt/registry/.started
+    state: touch
+  when: registry_start.changed
+  tags: [registry]

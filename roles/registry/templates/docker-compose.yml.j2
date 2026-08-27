@@ -1,0 +1,19 @@
+version: "3.8"
+services:
+  registry:
+    image: registry:{{ registry_version }}
+    container_name: registry
+    restart: unless-stopped
+    ports:
+      - "{{ registry_port }}:5000"
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/server.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/server.key
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - "{{ registry_data_dir }}:/var/lib/registry"
+      - "{{ registry_auth_dir }}:/auth:ro"
+      - "{{ registry_auth_dir }}:/certs:ro"

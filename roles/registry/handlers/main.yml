@@ -1,0 +1,8 @@
+---
+- name: Update CA certificates
+  ansible.builtin.command: update-ca-certificates
+  listen: Update CA certificates
+
+- name: Restart registry
+  ansible.builtin.command: docker compose -f /opt/registry/docker-compose.yml up -d --force-recreate
+  listen: Restart registry
