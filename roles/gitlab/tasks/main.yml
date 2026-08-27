@@ -68,7 +68,7 @@
 # поэтому гарантируем его здесь (создаём или сбрасываем пароль).
 - name: Ensure GitLab root user exists with known password
   ansible.builtin.shell: |
-    gitlab-rails runner <<'RUBY'
+    gitlab-rails runner - <<'RUBY'
     u = User.find_by(username: "root")
     if u
       if u.valid_password?("{{ gitlab_root_password }}")
